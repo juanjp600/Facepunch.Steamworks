@@ -70,7 +70,7 @@ namespace Steamworks
 		{
 			foreach ( var file in SteamRemoteStorage.Files )
 			{
-				Console.WriteLine( $"{file} ({SteamRemoteStorage.FileSize(file)} {SteamRemoteStorage.FileTime( file )})" );
+				Console.WriteLine( $"{file} ({file.Filename} {file.Size})" );
 			}
 
 		}

@@ -40,11 +40,16 @@ namespace Steamworks
 			var serverInit = new SteamServerInit( "rust", "Rusty Mode" )
 			{
 				GamePort = 28015,
-				Secure = true,
+				Mode = InitServerMode.AuthenticationSecure,
 				QueryPort = 28016
 			};
 
 			Steamworks.SteamServer.Init( 252490, serverInit );
+
+			//
+			// Needs to happen before LogOnAnonymous
+			//
+			SteamNetworkingSockets.RequestFakeIP();
 
 			SteamServer.LogOnAnonymous();
 

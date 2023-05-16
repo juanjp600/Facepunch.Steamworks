@@ -5,7 +5,7 @@
 		<DefineConstants>$(DefineConstants);PLATFORM_POSIX64;PLATFORM_POSIX;PLATFORM_64</DefineConstants>
 		<TargetFrameworks>netstandard2.1</TargetFrameworks>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-		<LangVersion>latest</LangVersion>	
+		<LangVersion>latest</LangVersion>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 		<RootNamespace>Steamworks</RootNamespace>

@@ -121,7 +121,7 @@ namespace Steamworks
 			Console.WriteLine( $"Directory: {item?.Directory}" );
 			Console.WriteLine( $"IsInstalled: {item?.IsInstalled}" );
 			Console.WriteLine( $"IsAcceptedForUse: {item?.IsAcceptedForUse}" );
-			Console.WriteLine( $"IsPublic: {item?.IsPublic}" );
+			Console.WriteLine( $"Visibility: {item?.Visibility}" );
 			Console.WriteLine( $"Created: {item?.Created}" );
 			Console.WriteLine( $"Updated: {item?.Updated}" );
 			Console.WriteLine( $"Score: {item?.Score}" );

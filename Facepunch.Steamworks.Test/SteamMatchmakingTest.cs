@@ -18,7 +18,7 @@ namespace Steamworks
 		{
 			await CreateLobby();
 
-			var list = await SteamMatchmaking.LobbyList
+			var list = await SteamMatchmaking.CreateLobbyQuery()
 									.RequestAsync();
 
 			if ( list == null )
