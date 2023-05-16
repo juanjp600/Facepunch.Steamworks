@@ -11,7 +11,7 @@ namespace Steamworks.ServerList
 	{
 
 		#region ISteamMatchmakingServers
-		internal static ISteamMatchmakingServers Internal => SteamMatchmakingServers.Internal;
+		internal static ISteamMatchmakingServers? Internal => SteamMatchmakingServers.Internal;
 		#endregion
 
 
@@ -23,18 +23,23 @@ namespace Steamworks.ServerList
 		/// <summary>
 		/// When a new server is added, this function will get called
 		/// </summary>
-		public event Action OnChanges;
+		public Action? OnChanges;
 
-		/// <summary>
-		/// Called for every responsive server
-		/// </summary>
-		public event Action<ServerInfo> OnResponsiveServer;
+        /// <summary>
+        /// Called for every responsive server
+        /// </summary>
+        public Action<ServerInfo>? OnResponsiveServer;
 
-		/// <summary>
-		/// A list of servers that responded. If you're only interested in servers that responded since you
-		/// last updated, then simply clear this list.
-		/// </summary>
-		public List<ServerInfo> Responsive = new List<ServerInfo>();
+        /// <summary>
+        /// Called for every unresponsive server
+        /// </summary>
+        public Action<ServerInfo>? OnUnresponsiveServer;
+
+        /// <summary>
+        /// A list of servers that responded. If you're only interested in servers that responded since you
+        /// last updated, then simply clear this list.
+        /// </summary>
+        public List<ServerInfo> Responsive = new List<ServerInfo>();
 
 		/// <summary>
 		/// A list of servers that were in the master list but didn't respond. 
@@ -60,14 +65,14 @@ namespace Steamworks.ServerList
 
 			var thisRequest = request;
 
-			while ( IsRefreshing )
+			while ( true )
 			{
 				await Task.Delay( 33 );
 
 				//
 				// The request has been cancelled or changed in some way
 				//
-				if ( request.Value == IntPtr.Zero || thisRequest.Value != request.Value )
+				if ( request.Value == IntPtr.Zero || thisRequest.Value != request.Value || !IsRefreshing )
 					return false;
 
 				if ( !SteamClient.IsValid )
@@ -93,7 +98,7 @@ namespace Steamworks.ServerList
 			return true;
 		}
 
-		public virtual void Cancel() => Internal.CancelQuery( request );
+		public virtual void Cancel() => Internal?.CancelQuery( request );
 
 		// Overrides
 		internal abstract void LaunchQuery();
@@ -112,8 +117,8 @@ namespace Steamworks.ServerList
 
 		#endregion
 
-		internal int Count => Internal.GetServerCount( request );
-		internal bool IsRefreshing => request.Value != IntPtr.Zero && Internal.IsRefreshing( request );
+		internal int Count => Internal?.GetServerCount( request ) ?? 0;
+		internal bool IsRefreshing => request.Value != IntPtr.Zero && Internal != null && Internal.IsRefreshing( request );
 		internal List<int> watchList = new List<int>();
 		internal int LastCount = 0;
 
@@ -129,7 +134,7 @@ namespace Steamworks.ServerList
 			if ( request.Value != IntPtr.Zero )
 			{
 				Cancel();
-				Internal.ReleaseRequest( request );
+				Internal?.ReleaseRequest( request );
 				request = IntPtr.Zero;
 			}
 		}
@@ -161,6 +166,8 @@ namespace Steamworks.ServerList
 		{
 			watchList.RemoveAll( x =>
 			{
+				if (Internal is null) { return true; }
+				
 				var info = Internal.GetServerDetails( request, x );
 				if ( info.HadSuccessfulResponse )
 				{
@@ -176,6 +183,8 @@ namespace Steamworks.ServerList
 		{
 			watchList.RemoveAll( x =>
 			{
+				if (Internal is null) { return true; }
+
 				var info = Internal.GetServerDetails( request, x );
 				OnServer( ServerInfo.From( info ), info.HadSuccessfulResponse );
 				return true;
@@ -188,10 +197,13 @@ namespace Steamworks.ServerList
 			{
 				Responsive.Add( serverInfo );
 				OnResponsiveServer?.Invoke( serverInfo );
-				return;
 			}
+            else
+            {
+			    Unresponsive.Add( serverInfo );
+                OnUnresponsiveServer?.Invoke(serverInfo);
+            }
 			
-			Unresponsive.Add( serverInfo );
 		}
 	}
 }

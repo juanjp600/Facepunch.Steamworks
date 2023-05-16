@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -25,7 +26,7 @@ namespace Steamworks
 		/// Params are : [Callback Type] [Callback Contents] [server]
 		/// 
 		/// </summary>
-		public static Action<CallbackType, string, bool> OnDebugCallback;
+		public static Action<CallbackType, string, bool>? OnDebugCallback;
 
 		/// <summary>
 		/// Called if an exception happens during a callback/callresult.
@@ -33,7 +34,7 @@ namespace Steamworks
 		/// async.. and can fail silently. With this hooked you won't be stuck wondering
 		/// what happened.
 		/// </summary>
-		public static Action<Exception> OnException;
+		public static Action<Exception>? OnException;
 
 		#region interop
 		[DllImport( Platform.LibraryName, EntryPoint = "SteamAPI_ManualDispatch_Init", CallingConvention = CallingConvention.Cdecl )]
@@ -221,7 +222,7 @@ namespace Steamworks
 			}
 
 			// Remove it before we do anything, incase the continuation throws exceptions
-			ResultCallbacks.Remove( result.AsyncCall );
+			ResultCallbacks.Remove( result.AsyncCall, out _ );
 
 			// At this point whatever async routine called this 
 			// continues running.
@@ -262,7 +263,7 @@ namespace Steamworks
 			public bool server;
 		}
 
-		static Dictionary<ulong, ResultCallback> ResultCallbacks = new Dictionary<ulong, ResultCallback>();
+		static ConcurrentDictionary<ulong, ResultCallback> ResultCallbacks = new ConcurrentDictionary<ulong, ResultCallback>();
 
 		/// <summary>
 		/// Watch for a steam api call
@@ -287,7 +288,7 @@ namespace Steamworks
 		/// <summary>
 		/// Install a global callback. The passed function will get called if it's all good.
 		/// </summary>
-		internal static void Install<T>( Action<T> p, bool server = false ) where T : ICallbackData
+		internal static void Install<T>( Action<T> p, bool server = false ) where T : struct, ICallbackData
 		{
 			var t = default( T );
 			var type = t.CallbackType;
@@ -305,6 +306,15 @@ namespace Steamworks
 			} );
 		}
 
+		private static void RemoveCallbacks(Func<KeyValuePair<ulong, ResultCallback>, bool> predicate)
+		{
+			var toRemove = ResultCallbacks.Where( predicate ).Select(kvp => kvp.Key).ToArray();
+			foreach (var key in toRemove)
+			{
+				ResultCallbacks.Remove(key, out _);
+			}
+		}
+		
 		internal static void ShutdownServer()
 		{
 			ServerPipe = 0;
@@ -314,8 +324,7 @@ namespace Steamworks
 				Callbacks[callback.Key].RemoveAll( x => x.server );
 			}
 
-			ResultCallbacks = ResultCallbacks.Where( x => !x.Value.server )
-											 .ToDictionary( x => x.Key, x => x.Value );
+			RemoveCallbacks(x => x.Value.server);
 		}
 
 		internal static void ShutdownClient()
@@ -327,8 +336,7 @@ namespace Steamworks
 				Callbacks[callback.Key].RemoveAll( x => !x.server );
 			}
 
-			ResultCallbacks = ResultCallbacks.Where( x => x.Value.server )
-											 .ToDictionary( x => x.Key, x => x.Value );
+			RemoveCallbacks(x => !x.Value.server);
 		}
 	}
 }

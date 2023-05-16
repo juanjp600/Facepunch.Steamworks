@@ -10,9 +10,9 @@ namespace Steamworks.ServerList
 	{
 		internal override void LaunchQuery()
 		{
+			if (Internal is null) { return; }
 			var filters = GetFilters();
-
-			request = Internal.RequestInternetServerList( AppId.Value, ref filters, (uint)filters.Length, IntPtr.Zero );
+			request = Internal.RequestInternetServerList( AppId.Value, filters, (uint)filters.Length, IntPtr.Zero );
 		}
 	}
 }

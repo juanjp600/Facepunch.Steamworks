@@ -2,6 +2,8 @@ using System;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Collections.Generic;
+using System.Threading;
+using System.Collections.Concurrent;
 
 namespace Steamworks
 {
@@ -9,35 +11,44 @@ namespace Steamworks
 	{
 		public const int MemoryBufferSize = 1024 * 32;
 
-		private static IntPtr[] MemoryPool = new IntPtr[]
-		{
-			Marshal.AllocHGlobal( MemoryBufferSize ),
-			Marshal.AllocHGlobal( MemoryBufferSize ),
-			Marshal.AllocHGlobal( MemoryBufferSize ),
-			Marshal.AllocHGlobal( MemoryBufferSize )
-		};
-		private static int MemoryPoolIndex;
+		internal struct Memory : IDisposable
+        {
+			private const int MaxBagSize = 4;
+			private static readonly ConcurrentBag<IntPtr> BufferBag = new ConcurrentBag<IntPtr>();
 
-		public static unsafe IntPtr TakeMemory()
-		{
-			lock ( MemoryPool )
+			public IntPtr Ptr { get; private set; }
+
+			public static implicit operator IntPtr(in Memory m) => m.Ptr;
+
+			internal unsafe Memory(int sz)
 			{
-				MemoryPoolIndex++;
-
-				if ( MemoryPoolIndex >= MemoryPool.Length )
-					MemoryPoolIndex = 0;
-
-				var take = MemoryPool[MemoryPoolIndex];
-
-				((byte*)take)[0] = 0;
-
-				return take;
+				Ptr = BufferBag.TryTake(out IntPtr ptr) ? ptr : Marshal.AllocHGlobal(sz);
+				((byte*)Ptr)[0] = 0;
 			}
-		}
 
+			public void Dispose()
+			{
+				if (Ptr == IntPtr.Zero) { return; }
+				if (BufferBag.Count < MaxBagSize)
+				{
+					BufferBag.Add(Ptr);
+				}
+                else
+                {
+					Marshal.FreeHGlobal(Ptr);
+                }
+				Ptr = IntPtr.Zero;
+			}
+        }
+		
+		public static Memory TakeMemory()
+		{
+			return new Memory(MemoryBufferSize);
+		}
 
 		private static byte[][] BufferPool = new byte[4][];
 		private static int BufferPoolIndex;
+		private static object BufferMutex = new object();
 
 		/// <summary>
 		/// Returns a buffer. This will get returned and reused later on.
@@ -45,7 +56,7 @@ namespace Steamworks
 		/// </summary>
 		public static byte[] TakeBuffer( int minSize )
 		{
-			lock ( BufferPool  )
+			lock ( BufferPool )
 			{
 				BufferPoolIndex++;
 

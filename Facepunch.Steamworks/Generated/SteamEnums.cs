@@ -201,6 +201,10 @@ namespace Steamworks
 		InvalidVersion = 3,
 		GameMismatch = 4,
 		ExpiredTicket = 5,
+
+        //NOT IMPLEMENTED BY STEAMWORKS; ONLY USED IN BAROTRAUMA
+        //TODO: think up a different solution to what we use this for
+        ServerNotConnectedToSteam = 9999,
 	}
 	
 	//

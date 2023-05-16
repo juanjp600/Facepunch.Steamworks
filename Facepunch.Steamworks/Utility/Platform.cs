@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Runtime.InteropServices;
-using System.Text;
+﻿using System.Runtime.InteropServices;
 
 namespace Steamworks
 {
@@ -16,6 +10,9 @@ namespace Steamworks
 #elif PLATFORM_WIN32
 		public const int StructPlatformPackSize = 8;
 		public const string LibraryName = "steam_api";
+#elif PLATFORM_POSIX64
+		public const int StructPlatformPackSize = 4;
+		public const string LibraryName = "libsteam_api64";
 #elif PLATFORM_POSIX
 		public const int StructPlatformPackSize = 4;
 		public const string LibraryName = "libsteam_api";

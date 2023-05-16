@@ -12,7 +12,7 @@ namespace Steamworks
 	/// </summary>
 	public class SteamMatchmaking : SteamClientClass<SteamMatchmaking>
 	{
-		internal static ISteamMatchmaking Internal => Interface as ISteamMatchmaking;
+		internal static ISteamMatchmaking? Internal => Interface as ISteamMatchmaking;
 
 		internal override void InitializeInterface( bool server )
 		{
@@ -70,9 +70,11 @@ namespace Steamworks
 
 		static private unsafe void OnLobbyChatMessageRecievedAPI( LobbyChatMsg_t callback )
 		{
+			if (Internal is null) { return; }
+
 			SteamId steamid = default;
 			ChatEntryType chatEntryType = default;
-			var buffer = Helpers.TakeMemory();
+			using var buffer = Helpers.TakeMemory();
 
 			var readData = Internal.GetLobbyChatEntry( callback.SteamIDLobby, (int)callback.ChatID, ref steamid, buffer, Helpers.MemoryBufferSize, ref chatEntryType );
 
@@ -82,77 +84,95 @@ namespace Steamworks
 			}
 		}
 
+        public static void ResetActions()
+        {
+            OnLobbyInvite = null;
+            OnLobbyEntered = null;
+            OnLobbyCreated = null;
+            OnLobbyGameCreated = null;
+            OnLobbyDataChanged = null;
+            OnLobbyMemberDataChanged = null;
+            OnLobbyMemberJoined = null;
+            OnLobbyMemberLeave = null;
+            OnLobbyMemberDisconnected = null;
+            OnLobbyMemberKicked = null;
+            OnLobbyMemberBanned = null;
+            OnChatMessage = null;
+        }
+
 		/// <summary>
 		/// Someone invited you to a lobby
 		/// </summary>
-		public static event Action<Friend, Lobby> OnLobbyInvite;
+		public static event Action<Friend, Lobby>? OnLobbyInvite;
 
 		/// <summary>
 		/// You joined a lobby
 		/// </summary>
-		public static event Action<Lobby> OnLobbyEntered;
+		public static event Action<Lobby>? OnLobbyEntered;
 
 		/// <summary>
 		/// You created a lobby
 		/// </summary>
-		public static event Action<Result, Lobby> OnLobbyCreated;
+		public static event Action<Result, Lobby>? OnLobbyCreated;
 
 		/// <summary>
 		/// A game server has been associated with the lobby
 		/// </summary>
-		public static event Action<Lobby, uint, ushort, SteamId> OnLobbyGameCreated;
+		public static event Action<Lobby, uint, ushort, SteamId>? OnLobbyGameCreated;
 
 		/// <summary>
 		/// The lobby metadata has changed
 		/// </summary>
-		public static event Action<Lobby> OnLobbyDataChanged;
+		public static event Action<Lobby>? OnLobbyDataChanged;
 
 		/// <summary>
 		/// The lobby member metadata has changed
 		/// </summary>
-		public static event Action<Lobby, Friend> OnLobbyMemberDataChanged;
+		public static event Action<Lobby, Friend>? OnLobbyMemberDataChanged;
 
 		/// <summary>
 		/// The lobby member joined
 		/// </summary>
-		public static event Action<Lobby, Friend> OnLobbyMemberJoined;
+		public static event Action<Lobby, Friend>? OnLobbyMemberJoined;
 
 		/// <summary>
 		/// The lobby member left the room
 		/// </summary>
-		public static event Action<Lobby, Friend> OnLobbyMemberLeave;
+		public static event Action<Lobby, Friend>? OnLobbyMemberLeave;
 
 		/// <summary>
 		/// The lobby member left the room
 		/// </summary>
-		public static event Action<Lobby, Friend> OnLobbyMemberDisconnected;
+		public static event Action<Lobby, Friend>? OnLobbyMemberDisconnected;
 
 		/// <summary>
 		/// The lobby member was kicked. The 3rd param is the user that kicked them.
 		/// </summary>
-		public static event Action<Lobby, Friend, Friend> OnLobbyMemberKicked;
+		public static event Action<Lobby, Friend, Friend>? OnLobbyMemberKicked;
 
 		/// <summary>
 		/// The lobby member was banned. The 3rd param is the user that banned them.
 		/// </summary>
-		public static event Action<Lobby, Friend, Friend> OnLobbyMemberBanned;
+		public static event Action<Lobby, Friend, Friend>? OnLobbyMemberBanned;
 
 		/// <summary>
 		/// A chat message was recieved from a member of a lobby
 		/// </summary>
-		public static event Action<Lobby, Friend, string> OnChatMessage;
+		public static event Action<Lobby, Friend, string>? OnChatMessage;
 
-		public static LobbyQuery LobbyList => new LobbyQuery();
+        public static LobbyQuery CreateLobbyQuery() { return new LobbyQuery(); }
 
 		/// <summary>
 		/// Creates a new invisible lobby. Call lobby.SetPublic to take it online.
 		/// </summary>
 		public static async Task<Lobby?> CreateLobbyAsync( int maxMembers = 100 )
 		{
+			if (Internal is null) { return null; }
+			
 			var lobby = await Internal.CreateLobby( LobbyType.Invisible, maxMembers );
-			if ( !lobby.HasValue || lobby.Value.Result != Result.OK ) return null;
+			if ( !lobby.HasValue ) { return null; }
 
-			return new Lobby { Id = lobby.Value.SteamIDLobby };
+			return new Lobby { Id = lobby.Value.SteamIDLobby, Result = lobby.Value.Result };
 		}
 
 		/// <summary>
@@ -160,6 +180,8 @@ namespace Steamworks
 		/// </summary>
 		public static async Task<Lobby?> JoinLobbyAsync( SteamId lobbyId )
 		{
+			if (Internal is null) { return null; }
+
 			var lobby = await Internal.JoinLobby( lobbyId );
 			if ( !lobby.HasValue ) return null;
 
@@ -171,6 +193,8 @@ namespace Steamworks
 		/// </summary>
 		public static IEnumerable<ServerInfo> GetFavoriteServers()
 		{
+			if (Internal is null) { yield break; }
+
 			var count = Internal.GetFavoriteGameCount();
 
 			for( int i=0; i<count; i++ )
@@ -195,6 +219,8 @@ namespace Steamworks
 		/// </summary>
 		public static IEnumerable<ServerInfo> GetHistoryServers()
 		{
+			if (Internal is null) { yield break; }
+
 			var count = Internal.GetFavoriteGameCount();
 
 			for ( int i = 0; i < count; i++ )

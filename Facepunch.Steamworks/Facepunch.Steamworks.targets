@@ -20,11 +20,11 @@
 		<NoWarn>1701;1702;1705;618;1591</NoWarn>
 	</PropertyGroup>
 
-	<PropertyGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' ">
+	<PropertyGroup Condition=" '$(TargetFramework)' == 'netstandard2.1' ">
 		<DefineConstants>$(DefineConstants);NET_CORE</DefineConstants>
 	</PropertyGroup>
 
-	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|netstandard2.0|AnyCPU'">
+	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|netstandard2.1|AnyCPU'">
 		<DebugType>full</DebugType>
 		<DebugSymbols>true</DebugSymbols>
 	</PropertyGroup>
@@ -33,5 +33,5 @@
 		<Compile Remove="*AssemblyInfo.cs" />
 		<Folder Include="Generated\Interfaces\" />
 	</ItemGroup>
-  
+
 </Project>

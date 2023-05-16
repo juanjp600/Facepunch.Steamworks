@@ -12,7 +12,7 @@ namespace Steamworks
 	/// </summary>
 	public class SteamNetworkingUtils : SteamSharedClass<SteamNetworkingUtils>
 	{
-		internal static ISteamNetworkingUtils Internal => Interface as ISteamNetworkingUtils;
+		internal static ISteamNetworkingUtils? Internal => Interface as ISteamNetworkingUtils;
 
 		internal override void InitializeInterface( bool server )
 		{
@@ -24,7 +24,13 @@ namespace Steamworks
 		{
 			Dispatch.Install<SteamRelayNetworkStatus_t>( x =>
 			{
-				Status = x.Avail;
+				Status = new SteamRelayNetworkStatus
+				{
+					Avail = x.Avail,
+					AvailNetConfig = x.AvailNetworkConfig,
+					AvailAnyRelay = x.AvailAnyRelay,
+					Msg = x.DebugMsgUTF8()
+				};
 			}, server );
 		}
 
@@ -37,12 +43,20 @@ namespace Steamworks
 		/// and your frame rate will tank and you won't know why.
 		/// </summary>
 
-		public static event Action<NetDebugOutput, string> OnDebugOutput;
+		public static event Action<NetDebugOutput, string>? OnDebugOutput;
+
+		public struct SteamRelayNetworkStatus
+		{
+			public SteamNetworkingAvailability Avail;
+			public SteamNetworkingAvailability AvailNetConfig;
+			public SteamNetworkingAvailability AvailAnyRelay;
+			public string Msg;
+		}
 
 		/// <summary>
 		/// The latest available status gathered from the SteamRelayNetworkStatus callback
 		/// </summary>
-		public static SteamNetworkingAvailability Status { get; private set; }
+		public static SteamRelayNetworkStatus Status { get; private set; }
 
 		/// <summary>
 		/// If you know that you are going to be using the relay network (for example,
@@ -68,7 +82,7 @@ namespace Steamworks
 		/// </summary>
 		public static void InitRelayNetworkAccess()
 		{
-			Internal.InitRelayNetworkAccess();
+			Internal?.InitRelayNetworkAccess();
 		}
 
 		/// <summary>
@@ -84,6 +98,8 @@ namespace Steamworks
 		{
 			get
 			{
+				if (Internal is null) { return null; }
+
 				NetPingLocation location = default;
 				var age = Internal.GetLocalPingLocation( ref location );
 				if ( age < 0 )
@@ -100,7 +116,7 @@ namespace Steamworks
 		/// </summary>
 		public static int EstimatePingTo( NetPingLocation target )
 		{
-			return Internal.EstimatePingTimeFromLocalHost( ref target );
+			return Internal?.EstimatePingTimeFromLocalHost( ref target ) ?? 0;
 		}
 
 		/// <summary>
@@ -109,7 +125,8 @@ namespace Steamworks
 		/// </summary>
 		public static async Task WaitForPingDataAsync( float maxAgeInSeconds = 60 * 5 )
 		{
-			if ( Internal.CheckPingDataUpToDate( maxAgeInSeconds ) )
+			await Task.Yield();
+			if ( Internal is null || Internal.CheckPingDataUpToDate( maxAgeInSeconds ) )
 				return;
 
 			SteamRelayNetworkStatus_t status = default;
@@ -120,7 +137,7 @@ namespace Steamworks
 			}
 		}
 
-		public static long LocalTimestamp => Internal.GetLocalTimestamp();
+		public static long LocalTimestamp => Internal?.GetLocalTimestamp() ?? 0;
 
 
 		/// <summary>
@@ -208,7 +225,7 @@ namespace Steamworks
 				_debugLevel = value;
 				_debugFunc = new NetDebugFunc( OnDebugMessage );
 
-				Internal.SetDebugOutputFunction( value, _debugFunc );
+				Internal?.SetDebugOutputFunction( value, _debugFunc );
 			}
 		}
 
@@ -220,7 +237,7 @@ namespace Steamworks
 		/// <summary>
 		/// We need to keep the delegate around until it's not used anymore
 		/// </summary>
-		static NetDebugFunc _debugFunc;
+		static NetDebugFunc? _debugFunc;
 
 		struct DebugMessage
 		{
@@ -259,7 +276,7 @@ namespace Steamworks
 		internal unsafe static bool SetConfigInt( NetConfig type, int value )
 		{
 			int* ptr = &value;
-			return Internal.SetConfigValue( type, NetConfigScope.Global, IntPtr.Zero, NetConfigType.Int32, (IntPtr)ptr );
+			return Internal != null && Internal.SetConfigValue( type, NetConfigScope.Global, IntPtr.Zero, NetConfigType.Int32, (IntPtr)ptr );
 		}
 
 		internal unsafe static int GetConfigInt( NetConfig type )
@@ -268,7 +285,7 @@ namespace Steamworks
 			NetConfigType dtype = NetConfigType.Int32;
 			int* ptr = &value;
 			UIntPtr size = new UIntPtr( sizeof( int ) );
-			var result = Internal.GetConfigValue( type, NetConfigScope.Global, IntPtr.Zero, ref dtype, (IntPtr) ptr, ref size );
+			var result = Internal?.GetConfigValue( type, NetConfigScope.Global, IntPtr.Zero, ref dtype, (IntPtr) ptr, ref size );
 			if ( result != NetConfigResult.OK )
 				return 0;
 
@@ -278,7 +295,7 @@ namespace Steamworks
 		internal unsafe static bool SetConfigFloat( NetConfig type, float value )
 		{
 			float* ptr = &value;
-			return Internal.SetConfigValue( type, NetConfigScope.Global, IntPtr.Zero, NetConfigType.Float, (IntPtr)ptr );
+			return Internal != null && Internal.SetConfigValue( type, NetConfigScope.Global, IntPtr.Zero, NetConfigType.Float, (IntPtr)ptr );
 		}
 
 		internal unsafe static float GetConfigFloat( NetConfig type )
@@ -287,7 +304,7 @@ namespace Steamworks
 			NetConfigType dtype = NetConfigType.Float;
 			float* ptr = &value;
 			UIntPtr size = new UIntPtr( sizeof( float ) );
-			var result = Internal.GetConfigValue( type, NetConfigScope.Global, IntPtr.Zero, ref dtype, (IntPtr)ptr, ref size );
+			var result = Internal?.GetConfigValue( type, NetConfigScope.Global, IntPtr.Zero, ref dtype, (IntPtr)ptr, ref size );
 			if ( result != NetConfigResult.OK )
 				return 0;
 
@@ -300,7 +317,7 @@ namespace Steamworks
 
 			fixed ( byte* ptr = bytes )
 			{
-				return Internal.SetConfigValue( type, NetConfigScope.Global, IntPtr.Zero, NetConfigType.String, (IntPtr)ptr );
+				return Internal != null && Internal.SetConfigValue( type, NetConfigScope.Global, IntPtr.Zero, NetConfigType.String, (IntPtr)ptr );
 			}
 		}
 
