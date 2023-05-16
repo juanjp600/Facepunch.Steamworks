@@ -43,6 +43,7 @@ namespace Steamworks
 			Dispatch.Install<MicroTxnAuthorizationResponse_t>( x => OnMicroTxnAuthorizationResponse?.Invoke( x.AppID, x.OrderID, x.Authorized != 0 ) );
 			Dispatch.Install<GameWebCallback_t>( x => OnGameWebCallback?.Invoke( x.URLUTF8() ) );
 			Dispatch.Install<GetAuthSessionTicketResponse_t>( x => OnGetAuthSessionTicketResponse?.Invoke( x ) );
+			Dispatch.Install<GetTicketForWebApiResponse_t>( x => OnGetAuthTicketForWebApiResponse?.Invoke( x ) );
 			Dispatch.Install<DurationControl_t>( x => OnDurationControl?.Invoke( new DurationControl { _inner = x } ) );
 		}
 
@@ -92,6 +93,11 @@ namespace Steamworks
 		/// Used internally for <see cref="GetAuthSessionTicketAsync(double)"/>.
 		/// </summary>
 		internal static event Action<GetAuthSessionTicketResponse_t>? OnGetAuthSessionTicketResponse;
+		
+		/// <summary>
+		/// Used internally for <see cref="GetAuthTicketForWebApi(string)"/>.
+		/// </summary>
+		internal static event Action<GetTicketForWebApiResponse_t>? OnGetAuthTicketForWebApiResponse;
 
 		/// <summary>
 		/// Invoked when a user has responded to a microtransaction authorization request.
@@ -324,6 +330,49 @@ namespace Steamworks
 					Handle = ticket
 				};
 			}
+		}
+
+		public static async Task<AuthTicketForWebApi?> GetAuthTicketForWebApi( string identity )
+		{
+			if ( Internal is null ) { return null; }
+
+			HAuthTicket handle = default;
+			AuthTicketForWebApi? ticket = null;
+			Result result = Result.Pending;
+
+			Action<GetTicketForWebApiResponse_t> responseHandler = response =>
+			{
+				if ( response.Ticket == handle ) { return; }
+
+				result = response.Result == Result.Pending
+					? Result.Fail
+					: response.Result;
+				ticket = result == Result.OK
+					? new AuthTicketForWebApi(
+						response.GubTicket.Take( response.Ticket ).ToArray(),
+						response.AuthTicket )
+					: null;
+			};
+
+			OnGetAuthTicketForWebApiResponse += responseHandler;
+			try
+			{
+				handle = Internal.GetAuthTicketForWebApi( identity );
+
+				if ( handle == 0 ) { return null; }
+
+				var timeout = DateTime.Now + TimeSpan.FromSeconds( 60f );
+				while ( result == Result.Pending && DateTime.Now < timeout )
+				{
+					await Task.Delay( 10 );
+				}
+			}
+			finally
+			{
+				OnGetAuthTicketForWebApiResponse -= responseHandler;
+			}
+
+			return ticket;
 		}
 
 		/// <summary>
